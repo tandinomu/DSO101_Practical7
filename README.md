@@ -38,218 +38,80 @@ Configured the shared library in Jenkins:
 
 ### Phase 3: Application Development
 
-**1. Node.js Application Setup**
+
+#### 1: Node.js Application Setup
+
+**Created a new Node.js application:**
+
 ```bash
-mkdir sample-node-application
-cd sample-node-application
-npm init --yes
+mkdir my-simple-app
+cd my-simple-app
+npm init -y
 ```
 
-**2. Application Dependencies Configuration**
+**Modified `package.json` to include start script:**
 
-Modified `package.json`:
 ```json
 {
-  "name": "sample-node-application",
+  "name": "my-simple-app",
   "version": "1.0.0",
-  "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "test": "echo 'Executing test suite...' && exit 0",
-    "test:unit": "echo 'Running unit tests...' && exit 0"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
+    "start": "node server.js"
   }
 }
 ```
 
-**3. Application Code Development**
+**Developed basic application file `server.js`:**
 
-Created `src/server.js`:
 ```javascript
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome to Sample Node Application!',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy',
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  });
-});
-
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  });
-}
-
-module.exports = app;
+console.log("Hello from Node.js Application!");
+console.log("Server started successfully at:", new Date().toLocaleString());
 ```
 
-**4. Container Configuration**
+### Step 2: Pipeline Configuration
 
-Created `Dockerfile`:
-```dockerfile
-FROM node:18-alpine
+**Created `Jenkinsfile` in the application root directory:**
 
-# Set working directory
-WORKDIR /usr/src/app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Copy application source
-COPY . .
-
-# Change ownership and switch user
-RUN chown -R nodejs:nodejs /usr/src/app
-USER nodejs
-
-# Expose application port
-EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
-# Start application
-CMD ["npm", "start"]
-```
-
-### Phase 4: Pipeline Integration
-
-**Created `Jenkinsfile` in application repository:**
 ```groovy
-@Library('nodejs-pipeline-library') _
+@Library('my-shared-lib') _
 
-buildNodeApp {
-    appName = 'sample-node-app'
-    nodeVersion = '18'
-    packageManager = 'npm'
-    testCommand = 'test'
-    containerize = true
-    deployToRegistry = true
-    registryCredentials = 'dockerhub-credentials'
-    environment = 'production'
+pipeline {
+    agent any
+    stages {
+        stage('Setup Dependencies') {
+            steps {
+                installDependencies()
+            }
+        }
+        stage('Execute Application') {
+            steps {
+                sh 'npm start'
+            }
+        }
+    }
 }
 ```
 
-## Execution Results
+## Build Execution Results
 
-### Build Process Output
+**When the Jenkins pipeline was triggered:**
 
-When the Jenkins pipeline executes, the following sequence occurs:
-
-
-### Verification Steps
-1. **Library Loading:** Confirmed shared library functions are accessible
-2. **Dependency Management:** Verified npm packages install correctly  
-3. **Test Execution:** Validated test scripts run without errors
-4. **Image Creation:** Confirmed Docker image builds successfully
-5. **Registry Push:** Verified image uploads to DockerHub
-
-## Usage Patterns
-
-### Basic Implementation
-```groovy
-@Library('nodejs-pipeline-library') _
-
-buildNodeApp {
-    appName = 'simple-app'
-}
-```
-
-### Advanced Configuration
-```groovy
-@Library('nodejs-pipeline-library') _
-
-buildNodeApp {
-    appName = 'enterprise-app'
-    nodeVersion = '16'
-    packageManager = 'yarn'
-    testCommand = 'test:coverage'
-    containerize = true
-    deployToRegistry = true
-    environment = 'staging'
-    skipTests = false
-}
-```
-
-### Conditional Deployment
-```groovy
-@Library('nodejs-pipeline-library') _
-
-buildNodeApp {
-    appName = 'production-app'
-    containerize = true
-    deployToRegistry = (env.BRANCH_NAME == 'main')
-    registryCredentials = 'production-registry'
-}
-```
-
-## Key Achievements
-
-### Technical Benefits
-- Standardization:** Consistent pipeline structure across all Node.js projects
-- Code Reduction:** 70% reduction in Jenkinsfile complexity for individual projects
-- Maintainability:** Centralized pipeline logic enables easy updates and bug fixes
-- Efficiency:** Faster project onboarding with pre-built pipeline components
--  Quality:** Built-in best practices and error handling
-
-### Operational Benefits  
-- Speed:** Reduced time-to-market for new Node.js applications
-- Consistency:** Uniform deployment processes across development teams
-- Flexibility:** Configurable parameters allow project-specific customizations
-- Monitoring:** Standardized logging and reporting across all pipelines
+* Jenkins successfully retrieved both the application repository and shared library
+* The `installDependencies()` function from the shared library executed `npm install`
+* Application startup was triggered using `npm start`, which executed `node server.js`
+* Console output displayed: **"Hello from Node.js Application!"**
 
 ## Summary
 
-This implementation successfully demonstrates:
+This practical implementation achieved:
 
-- ✅ **Shared Library Architecture:** Proper separation of reusable components from application code
-- ✅ **Jenkins Integration:** Seamless configuration and usage within Jenkins ecosystem  
-- ✅ **CI/CD Automation:** Complete automation from source code to container registry
-- ✅ **Best Practices:** Implementation of industry-standard DevOps patterns
-- ✅ **Scalability:** Framework that supports multiple projects and teams
+* **Successful integration** of Jenkins Shared Libraries with Node.js applications
+* **Code reusability** by utilizing centralized pipeline functions
+* **Automated execution** of Node.js applications through Jenkins pipelines
 
-The shared library approach significantly enhances development productivity while maintaining high standards for code quality and deployment consistency. This solution provides a solid foundation for scaling CI/CD operations across an organization's Node.js application portfolio.
+Jenkins Shared Libraries provide an effective solution for standardizing CI/CD processes and eliminating redundant pipeline code across multiple projects.
 
-## Reference Links
+## Repository Information
 
-- **📚 Shared Library Repository:** [nodejs-pipeline-library](https://github.com/username/nodejs-pipeline-library)
-- **🚀 Sample Application:** [sample-node-application](https://github.com/username/sample-node-application)
-- **📖 Jenkins Documentation:** [Extending with Shared Libraries](https://www.jenkins.io/doc/book/pipeline/shared-libraries/)
-
-## Future Enhancements
-
-- **Security Scanning:** Integration with vulnerability assessment tools
-- **Performance Testing:** Automated load testing capabilities  
-- **Multi-Environment Deployment:** Support for dev/staging/production workflows
-- **Notification System:** Slack/Teams integration for build status updates
-- **Metrics Collection:** Pipeline performance monitoring and analytics
+* **Application Repository:** [my-simple-app](https://github.com/tandinomu/Node.js-App)
+* **Shared Library Repository:** [my-shared-lib](https://github.com/tandinomu/nodejs-pipeline-library)
